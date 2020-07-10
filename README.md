@@ -1,5 +1,8 @@
 # amazon-ec2-by-ssm-association
 
+- CloudFormationでEC2の構築と、EC2内の環境を構築するサンプル
+- EC2内に構築する環境は、https://github.com/ot-nemoto/ansible-nginx 参照
+
 ## deploy
 
 ```sh

@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+# Ref. https://aws.amazon.com/jp/blogs/news/using-state-manager-over-cfn-init-in-cloudformation-and-its-benefits/
+
+Parameters:
+  ImageId:
+    Type: AWS::EC2::Image::Id
+    Default: ami-06ad9296e6cf1e3cf 
+  InstanceType:
+    Type: String
+    Default: t2.micro
+
+Resources:
+  Instance: 
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref ImageId
+      InstanceType: !Ref InstanceType
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
+      IamInstanceProfile: !Ref IamInstanceProfile
+  IamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+      - !Ref InstanceRole
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ec2.amazonaws.com
+          Action: sts:AssumeRole    
+      Description: Allows EC2 instances to call AWS services on your behalf.
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+  SSMAssocLogs:
+    Type: AWS::S3::Bucket
+  AnsibleAssociation:
+    Type: AWS::SSM::Association
+    Properties:
+      Name: AWS-ApplyAnsiblePlaybooks
+      WaitForSuccessTimeoutSeconds: 120
+      Targets:
+      - Key: InstanceIds
+        Values: [ !Ref Instance ]
+      OutputLocation:
+        S3Location: 
+          OutputS3BucketName: !Ref SSMAssocLogs
+      Parameters:
+        SourceType:
+        - GitHub
+        SourceInfo:
+        - '{"owner":"ot-nemoto",
+            "repository":"ansible-nginx",
+            "path":"",
+            "getOptions":"branch:master" }'
+        InstallDependencies:
+        - 'True'
+        PlaybookFile:
+        - site.yml
+        Check:
+        - 'False'
+        Verbose:
+        - -v
+
+Outputs:
+  SSMAssocLogs:
+    Value: !Ref SSMAssocLogs
